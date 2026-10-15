@@ -1,0 +1,57 @@
+[Unit]
+Description=teesessiond: generic GP TEE client daemon
+Documentation=https://github.com/Smech-Labs/teesessiond
+# Only start once the kernel's TEE device node actually exists; if no
+# amdtee/optee driver is bound, this unit will correctly never start
+# rather than crash-looping against a missing node.
+After=dev-tee0.device
+Requires=dev-tee0.device
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/teesessiond /dev/tee0
+
+# --- identity -----------------------------------------------------------
+DynamicUser=yes
+RuntimeDirectory=teesessiond
+RuntimeDirectoryMode=0750
+
+# --- filesystem ----------------------------------------------------------
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=no
+# PrivateDevices=no keeps the host /dev visible so /dev/tee0's node exists
+# in our mount namespace; DevicePolicy=closed + DeviceAllow below is what
+# actually restricts us, at the cgroup/eBPF level, to that one node.
+DevicePolicy=closed
+DeviceAllow=/dev/tee0 rw
+
+# --- capabilities / privilege ---------------------------------------------
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+
+# --- namespacing / attack surface reduction --------------------------------
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictAddressFamilies=AF_UNIX
+SystemCallFilter=@system-service
+SystemCallArchitectures=native
+UMask=0077
+
+Restart=on-failure
+RestartSec=2s
+
+[Install]
+WantedBy=multi-user.target

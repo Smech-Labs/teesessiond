@@ -1,0 +1,4 @@
+*.o
+*.ta
+src/teesessiond
+ta/*.ta
